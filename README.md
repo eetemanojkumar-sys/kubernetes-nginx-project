@@ -1,195 +1,96 @@
-# Kubernetes Nginx Deployment Project
+# Production-Oriented Kubernetes NGINX Deployment
 
 ## Overview
 
-This project demonstrates the deployment of an Nginx web application on Kubernetes using production-oriented Kubernetes concepts such as Deployments, Services, Ingress, persistent storage, health probes, resource management, autoscaling, configuration management, Secrets, and RBAC.
+A hands-on Kubernetes project that goes beyond a basic Pod deployment and demonstrates several production-oriented concepts around application delivery, networking, configuration, storage, scaling, health checks, and access control.
 
-The project was built and tested using Minikube running on an AWS EC2 instance.
+The project was built and tested with Minikube running on an AWS EC2 instance.
 
 ## Architecture
 
 ```text
-                        Client
-                          |
-                          v
-                       Ingress
-                          |
-                          v
-                    Nginx Service
-                          |
-                          v
-                +-------------------+
-                |    Deployment     |
-                |                   |
-                |    Nginx Pods     |
-                +-------------------+
-                          |
-              +-----------+-----------+
-              |                       |
-              v                       v
-          ConfigMap                 Secret
-                                     
-                          |
-                          v
-                         PVC
-                          |
-                          v
-                  Persistent Storage
-```
-
-Metrics Server collects resource metrics and the Horizontal Pod Autoscaler uses CPU utilization to automatically adjust the number of Nginx replicas.
-
-## Technologies Used
-
-* Kubernetes
-* Minikube
-* kubectl
-* Docker
-* Nginx
-* AWS EC2
-* Git
-* Linux
-
-## Kubernetes Concepts Implemented
-
-### Namespace
-
-Application resources are deployed inside the `dev` namespace to provide logical isolation.
-
-### Deployment
-
-The Nginx application is managed using a Kubernetes Deployment.
-
-The Deployment provides:
-
-* Declarative application management
-* Replica management
-* Rolling updates
-* Self-healing
-* Rollback support
-
-### Service
-
-A Kubernetes Service exposes the Nginx Pods through a stable network endpoint.
-
-The Service uses labels and selectors to discover the appropriate application Pods.
-
-### Ingress
-
-Ingress provides HTTP routing to the Nginx Service.
-
-Traffic flow:
-
-```text
 Client
   |
+  v
 Ingress
   |
-Service
+  v
+Kubernetes Service
   |
-Pods
+  v
+NGINX Deployment
+  |
+  +--> ConfigMap
+  +--> Secret
+  +--> PersistentVolumeClaim
+
+Metrics Server
+  |
+  v
+Horizontal Pod Autoscaler
 ```
 
-### ConfigMap
+## Tech Stack
 
-Non-sensitive application configuration is stored using a Kubernetes ConfigMap and injected into the application container.
+- Kubernetes
+- Minikube
+- kubectl
+- Docker
+- NGINX
+- AWS EC2
+- Linux
+- Git
 
-### Secret
+## Kubernetes Features Implemented
 
-Sensitive configuration is managed using a Kubernetes Secret.
+### Workload Management
+- Namespace isolation using `dev`
+- Deployment and ReplicaSet management
+- Rolling updates and rollback support
+- Self-healing through Kubernetes controllers
 
-The real `secret.yaml` file is excluded from Git using `.gitignore`.
+### Networking
+- Kubernetes Service for stable Pod access
+- Ingress for HTTP routing
 
-`secret.example.yaml` demonstrates the expected Secret structure using placeholder values.
+### Configuration and Secrets
+- ConfigMap for non-sensitive configuration
+- Secret pattern using `secret.example.yaml`
+- Real secret files excluded through `.gitignore`
 
-### Persistent Storage
+### Reliability
+- Liveness probes
+- Readiness probes
+- CPU and memory requests
+- CPU and memory limits
 
-Persistent application storage is implemented using a PersistentVolumeClaim.
+### Storage
+- PersistentVolumeClaim for persistent application data
 
-The PVC is mounted into:
-
-```text
-/usr/share/nginx/html
-```
-
-This allows application data to persist when a Pod is deleted and recreated.
-
-### Liveness Probe
-
-The liveness probe checks whether the Nginx container remains healthy.
-
-If the liveness probe repeatedly fails, Kubernetes can restart the container.
-
-### Readiness Probe
-
-The readiness probe determines whether the application is ready to receive traffic.
-
-Pods that fail readiness checks are removed from ready Service endpoints until they recover.
-
-### Resource Requests and Limits
-
-CPU and memory requests and limits are configured for the Nginx container.
-
-Example:
-
-```yaml
-resources:
-  requests:
-    cpu: "100m"
-    memory: "64Mi"
-  limits:
-    cpu: "500m"
-    memory: "128Mi"
-```
-
-Requests help Kubernetes schedule Pods.
-
-Limits control the maximum resources available to the container.
-
-### Horizontal Pod Autoscaler
-
-The project uses HPA to automatically scale the Nginx Deployment according to CPU utilization.
-
-Configuration:
+### Scaling
+The Horizontal Pod Autoscaler is configured with:
 
 ```text
 Minimum replicas: 1
 Maximum replicas: 5
-Target CPU:       50%
+Target CPU usage: 50%
 ```
 
 Metrics are supplied through Kubernetes Metrics Server.
 
-### RBAC
-
-Role-Based Access Control is implemented using:
+### Security
+RBAC is implemented using:
 
 ```text
-ServiceAccount
-      |
-      v
-RoleBinding
-      |
-      v
-Role
+ServiceAccount → Role → RoleBinding
 ```
 
-The `dev-reader` ServiceAccount is allowed to:
-
-* Get Pods
-* List Pods
-* Watch Pods
-
-It is not allowed to delete Pods.
-
-This demonstrates the principle of least privilege.
+The `dev-reader` service account can inspect Pods but is not granted permission to delete them, demonstrating least-privilege access.
 
 ## Project Structure
 
 ```text
-kubernetes-nginx-project/
-|
-├── README.md
+.
 ├── namespace.yaml
 ├── deployment.yaml
 ├── service.yaml
@@ -201,67 +102,42 @@ kubernetes-nginx-project/
 ├── serviceaccount.yaml
 ├── role.yaml
 ├── rolebinding.yaml
-└── .gitignore
+└── README.md
 ```
 
 ## Prerequisites
 
-Install:
+```bash
+kubectl version --client
+minikube version
+docker --version
+```
 
-* kubectl
-* Minikube
-* Docker
-* Git
-
-Start Minikube:
+Start the cluster and required components:
 
 ```bash
 minikube start --driver=docker
-```
-
-Enable Ingress:
-
-```bash
 minikube addons enable ingress
-```
-
-Enable Metrics Server:
-
-```bash
 minikube addons enable metrics-server
 ```
 
 ## Deployment
 
-Clone the repository and enter the project directory.
-
-Create the namespace first:
+Create the namespace:
 
 ```bash
 kubectl apply -f namespace.yaml
 ```
 
-Create your local Secret from the example:
+Create a local Secret from the example:
 
 ```bash
 cp secret.example.yaml secret.yaml
-```
-
-Edit the placeholder values:
-
-```bash
-nano secret.yaml
-```
-
-Apply the Secret:
-
-```bash
+# Edit placeholder values before applying
 kubectl apply -f secret.yaml
 ```
 
-Deploy the remaining Kubernetes resources.
-
-For example:
+Deploy the remaining resources:
 
 ```bash
 kubectl apply -f configmap.yaml
@@ -277,53 +153,19 @@ kubectl apply -f hpa.yaml
 
 ## Verification
 
-Check Pods:
-
 ```bash
 kubectl get pods -n dev
-```
-
-Check Deployment:
-
-```bash
 kubectl get deployments -n dev
-```
-
-Check Service:
-
-```bash
 kubectl get svc -n dev
-```
-
-Check Ingress:
-
-```bash
 kubectl get ingress -n dev
-```
-
-Check persistent storage:
-
-```bash
 kubectl get pvc -n dev
-kubectl get pv
-```
-
-Check HPA:
-
-```bash
 kubectl get hpa -n dev
-```
-
-Check resource usage:
-
-```bash
 kubectl top pods -n dev
-kubectl top nodes
 ```
 
-## Testing RBAC
+## RBAC Test
 
-Verify that `dev-reader` can list Pods:
+Confirm the service account can list Pods:
 
 ```bash
 kubectl auth can-i list pods \
@@ -331,13 +173,7 @@ kubectl auth can-i list pods \
   -n dev
 ```
 
-Expected:
-
-```text
-yes
-```
-
-Verify that it cannot delete Pods:
+Confirm it cannot delete Pods:
 
 ```bash
 kubectl auth can-i delete pods \
@@ -345,78 +181,35 @@ kubectl auth can-i delete pods \
   -n dev
 ```
 
-Expected:
-
-```text
-no
-```
-
 ## Troubleshooting Commands
 
-Useful Kubernetes troubleshooting commands used during this project:
-
 ```bash
-kubectl get pods -n dev
 kubectl get pods -n dev -o wide
 kubectl describe pod <pod-name> -n dev
 kubectl logs <pod-name> -n dev
 kubectl get events -n dev
-kubectl describe deployment nginx-deployment -n dev
 kubectl rollout status deployment/nginx-deployment -n dev
 kubectl rollout history deployment/nginx-deployment -n dev
 ```
 
-## Key Learning Outcomes
+## Skills Demonstrated
 
-Through this project I practiced:
+- Kubernetes Deployments and Services
+- Ingress networking
+- ConfigMaps and Secrets
+- PersistentVolumeClaims
+- Liveness and readiness probes
+- Resource requests and limits
+- Horizontal Pod Autoscaling
+- Metrics Server
+- Kubernetes RBAC
+- Linux and Kubernetes troubleshooting
 
-* Kubernetes cluster fundamentals
-* Pods and Deployments
-* ReplicaSets
-* Namespaces
-* Labels and selectors
-* ClusterIP and NodePort Services
-* Ingress routing
-* ConfigMaps and Secrets
-* PersistentVolumeClaims
-* Persistent storage
-* Liveness and readiness probes
-* CPU and memory requests/limits
-* Metrics Server
-* Horizontal Pod Autoscaling
-* ServiceAccounts
-* Kubernetes RBAC
-* Kubernetes YAML manifests
-* Kubernetes troubleshooting
+## Outcome
 
-## Security
+This repository demonstrates a complete Kubernetes application environment rather than only a simple container deployment. It brings together networking, configuration management, storage, scaling, reliability, security, and operational troubleshooting.
 
-Sensitive credentials should never be committed to source control.
+---
 
-The project uses:
-
-```text
-secret.example.yaml → safe placeholder configuration
-secret.yaml         → local Secret ignored by Git
-```
-
-Always use appropriate secret-management solutions for real production environments.
-
-## Future Improvements
-
-Potential improvements include:
-
-* Deploying the application to Amazon EKS
-* Using AWS EBS CSI for persistent storage
-* Installing Prometheus and Grafana for monitoring
-* Adding Helm charts
-* Implementing CI/CD using Jenkins
-* Using HTTPS/TLS with Ingress
-* Integrating centralized logging
-* Implementing GitOps using Argo CD
-
-## Author
-
-Eete Manoj Kumar
-
-DevOps / Cloud Engineering Project
+**Author:** Manoj Kumar  
+**Focus:** Cloud & DevOps Engineering
